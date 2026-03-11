@@ -50,7 +50,7 @@ class ReadDelegate(btle.DefaultDelegate):
         try:
             if len(data) > 1:
                 # print("data3 ", len(data))
-                #print("SpO2: " + str(ord(data[7])) + "%\tHR: " + str(ord(data[8])) + " bpm\tPI: " + str(ord(data[17])) + "\tMovement: " + str(ord(data[16])) + "\tBattery: " + str(ord(data[14])) + "%")
+                #print("SpO2: " + str(data[7]) + "%\tHR: " + str(data[8]) + " bpm\tPI: " + str(data[17]) + "\tMovement: " + str(data[16]) + "\tBattery: " + str(data[14]) + "%")
                 spo2 = data[7]
                 hrbpm = data[8]
                 pi = data[17]
@@ -61,26 +61,32 @@ class ReadDelegate(btle.DefaultDelegate):
                 # print("PI:   ", pi)
                 # print("Movement:   ", movement)
                 # print("Battery:   ", battery)
-                # logger.debug("Received Notification: " + ":".join("{:02x}".format(ord(c)) for c in data))
-                # logger.debug("7=" + str(ord(data[7])) + "\t8=" + str(ord(data[8])) + "\t14=" + str(ord(data[14])) + "\t16=" + str(ord(data[16])) + "\t17=" + str(ord(data[17])) + "\t18=" + str(ord(data[18])) )
+                # logger.debug("Received Notification: " + ":".join("{:02x}".format(c) for c in data))
+                # logger.debug("7=" + str(ord(data[7])) + "\t8=" + str(data[8]) + "\t14=" + str(data[14]) + "\t16=" + str(data[16]) + "\t17=" + str(data[17]) + "\t18=" + str(data[18]) )
                 if ord(data[18]) == 0:
                     ble_fail_count += 1
                     if verbose:
-                        logger.debug("Device is not being worn!\tBattery: " + str(ord(data[14])) + "%")
+                        logger.debug("Device is not being worn!\tBattery: " + str(data[14]) + "%")
                     if client.connected_flag:
-                        client.publish(mqtt_topic, '{"Battery":' + str(ord(data[14])) + '}')
-                elif ord(data[7]) == 0 and ord(data[8]) == 0:
+                        client.publish(mqtt_topic, '{"Battery":' + str(data[14]) + '}')
+                elif data[7] == 0 and data[8] == 0:
                     ble_fail_count += 1
                     if verbose:
-                        logger.debug("Device is calibrating...\tBattery: " + str(ord(data[14])) + "%")
+                        logger.debug("Device is calibrating...\tBattery: " + str(data[14]) + "%")
                     if client.connected_flag:
-                        client.publish(mqtt_topic, '{"Battery":' + str(ord(data[14])) + '}')
+                        client.publish(mqtt_topic, '{"Battery":' + str(data[14]) + '}')
                 else:
                     ble_fail_count = 0
                     if verbose:
-                        logger.debug("SpO2: " + str(ord(data[7])) + "%\tHR: " + str(ord(data[8])) + " bpm\tPI: " + str(ord(data[17])) + "\tMovement: " + str(ord(data[16])) + "\tBattery: " + str(ord(data[14])) + "%")
+                        logger.debug("SpO2: " + str(data[7]) + "%\tHR: " + str(data[8]) + " bpm\tPI: " + str(data[17]) + "\tMovement: " + str(data[16]) + "\tBattery: " + str(data[14]) + "%")
                     if client.connected_flag:
-                        client.publish('sensors', '{"SpO2":' + str(ord(data[7])) + ',"HR":' + str(ord(data[8])) + ',"PI":' + str(ord(data[17])) + ',"Movement":' + str(ord(data[16])) + ',"Battery":' + str(ord(data[14])) + '}')
+                        if str(data[7]) != '255':
+                            client.publish('cmring/spo2', str(data[7]))
+                            client.publish('cmring/hr', str(data[8]))
+                            client.publish('cmring/pi', str(data[17]))
+                            client.publish('cmring/movement', str(data[16]))
+                        client.publish('cmring/battery', str(data[14]))
+                        # client.publish('sensors', '{"SpO2":' + str(data[7]) + ',"HR":' + str(data[8]) + ',"PI":' + str(data[17]) + ',"Movement":' + str(data[16]) + ',"Battery":' + str(data[14]) + '}')
                 if ble_fail_count >= (ble_inactivity_timeout / ble_read_period):
                     # disconnect from device to conserve power
                     logger.warning("BLE: Inactivity timeout, disconnecting...")
