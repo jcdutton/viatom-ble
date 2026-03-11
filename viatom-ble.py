@@ -42,10 +42,27 @@ class ReadDelegate(btle.DefaultDelegate):
     def handleNotification(self, handle, data):
         global ble_fail_count
         global ble_next_reconnect_delay
+        # print("data ", len(data))
+        # print("data2:",  data)
+        # hex_str = data.hex()
+        # formatted = ":".join(hex_str[i:i+2] for i in range(0, len(hex_str), 2))
+        # print("fred", formatted)
         try:
             if len(data) > 1:
-                #logger.debug("Received Notification: " + ":".join("{:02x}".format(ord(c)) for c in data))
-                #logger.debug("7=" + str(ord(data[7])) + "\t8=" + str(ord(data[8])) + "\t14=" + str(ord(data[14])) + "\t16=" + str(ord(data[16])) + "\t17=" + str(ord(data[17])) + "\t18=" + str(ord(data[18])) )
+                # print("data3 ", len(data))
+                #print("SpO2: " + str(ord(data[7])) + "%\tHR: " + str(ord(data[8])) + " bpm\tPI: " + str(ord(data[17])) + "\tMovement: " + str(ord(data[16])) + "\tBattery: " + str(ord(data[14])) + "%")
+                spo2 = data[7]
+                hrbpm = data[8]
+                pi = data[17]
+                movement = data[16]
+                battery = data[14]
+                print("", time.time(), ",", spo2, ",", hrbpm, ",", pi, ",", movement, "," , battery, flush=True)
+                # print("SpO2: ", spo2, "HR:   ", hrbpm)
+                # print("PI:   ", pi)
+                # print("Movement:   ", movement)
+                # print("Battery:   ", battery)
+                # logger.debug("Received Notification: " + ":".join("{:02x}".format(ord(c)) for c in data))
+                # logger.debug("7=" + str(ord(data[7])) + "\t8=" + str(ord(data[8])) + "\t14=" + str(ord(data[14])) + "\t16=" + str(ord(data[16])) + "\t17=" + str(ord(data[17])) + "\t18=" + str(ord(data[18])) )
                 if ord(data[18]) == 0:
                     ble_fail_count += 1
                     if verbose:
@@ -82,9 +99,9 @@ class ScanDelegate(btle.DefaultDelegate):
 
     def handleDiscovery(self, dev, isNewDev, isNewData):
         if isNewDev:
-            print "Discovered device", dev.addr
+            print( "Discovered device", dev.addr)
         elif isNewData:
-            print "Received new data from", dev.addr
+            print( "Received new data from", dev.addr)
 
 
 def ble_scan():
@@ -92,16 +109,17 @@ def ble_scan():
     devices = scanner.scan(10.0)
 
     for dev in devices:
-        print "Device %s (%s), RSSI=%d dB" % (dev.addr, dev.addrType, dev.rssi)
+        print( "Device %s (%s), RSSI=%d dB" % (dev.addr, dev.addrType, dev.rssi))
         for (adtype, desc, value) in dev.getScanData():
-            print "  %s = %s" % (desc, value)
+            print( "  %s = %s" % (desc, value))
 
 
 if __name__ == "__main__":
 
     # ble config params
     # ble address of device
-    ble_address = "f3:ce:82:50:0c:a5"
+    # ble_address = "f3:ce:82:50:0c:a5"
+    ble_address = "E6:8E:31:3E:50:10"
     ble_type = btle.ADDR_TYPE_RANDOM
     # seconds to wait between reads
     ble_read_period = 2
@@ -121,18 +139,19 @@ if __name__ == "__main__":
     # other params
     ble_next_reconnect_delay = ble_reconnect_delay
     ble_fail_count = 0
-    logfile = "/var/log/viatom-ble.log"
+    #logfile = "/var/log/viatom-ble.log"
+    logfile = "./viatom-ble.log"
     console = False;
     verbose = False
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], "hvcsa:m:", ["address=","mqtt="])
     except getopt.GetoptError:
-        print 'viatom-ble.py -v -a <ble_address>'
+        print( 'viatom-ble.py -v -a <ble_address>')
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print 'viatom-ble.py -v -a <ble_address>'
+            print( 'viatom-ble.py -v -a <ble_address>')
             sys.exit()
         elif opt == '-v':
             verbose = True
@@ -140,7 +159,7 @@ if __name__ == "__main__":
             console = True
         elif opt == '-s':
             if os.geteuid() != 0:
-                print 'Must be root to perform scan'
+                print( 'Must be root to perform scan')
                 sys.exit(3)
             ble_scan();
             sys.exit()
@@ -149,10 +168,10 @@ if __name__ == "__main__":
 
     # initialize logger
     if not console or logfile == "":
-        print 'Logging to ' + logfile
+        print( 'Logging to ' + logfile)
         logging.basicConfig(format='%(asctime)s.%(msecs)03d [%(process)d] %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', filename=logfile, level=logging.DEBUG)
     else:
-        print 'Logging to console'
+        print( 'Logging to console')
         logging.basicConfig(format='%(asctime)s.%(msecs)03d [%(process)d] %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
     logger = logging.getLogger()
 
@@ -162,7 +181,8 @@ if __name__ == "__main__":
     # (will automatically reconnect in background on connection drop)
     mqtt.Client.connected_flag=False
     mqtt.Client.disconnect_flag=False
-    client = mqtt.Client("viatom-ble")
+    # client = mqtt.Client(callback_api_version: CallbackAPIVersion = CallbackAPIVersion.VERSION1, "viatom-ble")
+    client = mqtt.Client()
     client.on_connect=on_mqtt_connect
     client.on_disconnect=on_mqtt_disconnect
     client.loop_start()
